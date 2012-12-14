@@ -22,8 +22,10 @@ class SbtUpdate(sublime_plugin.TextCommand):
 
 class CommandRunner():
 	def load_config(self):
-		s = sublime.load_settings("SBTRunner.sublime-settings")
+		s = sublime.load_settings("SBT.sublime-settings")
+		#print(s.has("sbt_path"))
 		global SBT; SBT = s.get("sbt_path")
+		#print("SBT PATH: "+ SBT)
 
 	def run_command(self, sbt_command, commander):
 		#print(sbt_command)
