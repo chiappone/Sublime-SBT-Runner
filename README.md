@@ -7,6 +7,13 @@ Overview
 This plug-in for Sublime Text 2 enables you to:
   - Execute SBT commands from the context menu or shortcut
 
+Supported SBT commands are:
+  - sbt test-only
+  - sbt run-main
+  - sbt clean
+  - sbt update
+  - sbt compile
+
 
 Installation
 ------------
@@ -32,10 +39,7 @@ Modify the `SBTRunner.sublime-settings` file to `~/Library/Application Support/S
 Usage
 -----
 
- - Run single scala test fixture: `Command-Shift-X`
- - Run all scala tests in the project folder: `Option-Shift-X`
- - Switch between code and test: `Command-Shift-R`
- - Navigate to scala files in project folder (in quick panel): `Command-Shift-E`
+Right click for context menu or modify the shortcut keys
 
 Keys:
 - 'Command' (OSX) = 'Ctrl' (Linux / Windows)
@@ -44,16 +48,11 @@ Keys:
 
 Note
 ----
-This plug-in assumes your project folder is organized as follows:
+This plug-in assumes your project folder is organized as a standard SBT project:
 
-- implementation files are in src/main/scala/[namespace]/[ImplementationClassName].scala
-- test files are in src/test/scala/[namespace]/[ImplementationClassName]Test.scala
-- JAR files needed to run tests are either under lib/default or lib/test
+- src files would be located in /src/main/scala
+- test files would be located in /src/test/scala
 
-If that is not your convention, some of the features won't work.  (Use at your own risk.)  If you make modifications to accomodate your folder structure, go ahead and submit a pull request (bonus points for extensibility!)
+and the SBT project files are at the top level of your project
 
-Also note that currently this plug-in uses the JUnit test runner.
 
-Work at Bizo
-------------
-If you want to work on large systems across multiple regions on AWS or on big data problems with passionate developers [email me](mailto:gannon@bizo.com).  Also check out [Bizo's dev blog](http://dev.bizo.com)
