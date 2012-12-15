@@ -1,4 +1,4 @@
-Sublime SBT Runner
+Sublime SBT Runner and Tester
 =======================
 
 Overview
