@@ -1,4 +1,4 @@
-import sublime, sublime_plugin, subprocess, thread, os, functools, glob, fnmatch
+import sublime, sublime_plugin, subprocess, thread, os, functools, glob, fnmatch, re
 
 class SbtTestCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
@@ -24,28 +24,45 @@ class CommandRunner():
 	def load_config(self):
 		s = sublime.load_settings("SBT.sublime-settings")
 		#print(s.has("sbt_path"))
-		global SBT; SBT = s.get("sbt_path")
+		self.SBT = s.get("sbt_path")
+		self.PLAY = s.get("play_path")
 		#print("SBT PATH: "+ SBT)
+
+	def test_if_playapp(self):
+		self.play_base_dir = self.current_file.partition("/test/")[0]
+		print("Checking if: "+ self.play_base_dir + "/conf/routes")
+		if os.path.exists(self.play_base_dir + "/conf/routes"):
+			return True
+		else:
+			return False
 
 	def run_command(self, sbt_command, commander):
 		#print(sbt_command)
 		self.view = commander.view
 		self.load_config()
-		current_file = self.view.file_name()
-		print(current_file)
-		self.base_dir = current_file.partition("/test/scala/")[0]
+		self.current_file = self.view.file_name()
+		#print(self.current_file)
+		self.base_dir = self.current_file.partition("/test/scala/")[0]
 		self.project_dir = self.base_dir.replace("/src", "")
-		package_name = current_file.replace(self.base_dir + "/test/scala/", "").replace("/", ".").replace(".scala", "")
+		self.package_name = self.current_file.replace(self.base_dir + "/test/scala/", "").replace("/", ".").replace(".scala", "")
+
 		if sbt_command == "run-main":
-			if "/test/scala" in current_file: 
-				sbt_command = "\"test:run-main "+ package_name +"\""
+			if "/test/scala" in self.current_file: 
+				sbt_command = "\"test:run-main "+ self.package_name +"\""
 			else:
-				sbt_command = "\"run-main "+ package_name +"\""
+				sbt_command = "\"run-main "+ self.package_name +"\""
 		elif sbt_command == "test-only":
-			sbt_command = sbt_command +" "+ package_name
+			sbt_command = sbt_command +" "+ self.package_name
+
+		if self.test_if_playapp():
+			self.package_name = self.current_file.replace(self.play_base_dir+ "/test/", "").replace("/", ".").replace(".scala", "")
+			self.project_dir = self.play_base_dir
+			self.SBT = self.PLAY
+			sbt_command = "test-only" + " " + self.package_name
+
 
 		self.show_tests_panel()
-		command = wrap_in_cd(self.project_dir, SBT + " " + sbt_command)
+		command = wrap_in_cd(self.project_dir, self.SBT + " " + sbt_command)
 		self.proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		thread.start_new_thread(self.read_stdout, ())
 		thread.start_new_thread(self.read_stderr, ())
@@ -71,8 +88,10 @@ class CommandRunner():
 
 	def append_data(self, proc, data):
 		self.output_view.set_read_only(False)
-		#self.output_view.settings().set("syntax", "Packages/SublimeSBTRunner/TestConsole.tmLanguage")
+		self.output_view.settings().set("syntax", "Packages/SBTRunner/TestConsole.tmLanguage")
 		#self.output_view.settings().set("color_scheme", "Packages/SublimeSBTRunner/TestConsole.hidden-tmTheme")
+		data = re.sub(r'\033\[\d*(;\d*)?\w', '', data)
+		
 		edit = self.output_view.begin_edit()
 		self.output_view.insert(edit, self.output_view.size(), data)
 		self.output_view.end_edit(edit)
