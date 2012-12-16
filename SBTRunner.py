@@ -87,10 +87,15 @@ class CommandRunner():
 		return self.view.window()
 
 	def append_data(self, proc, data):
+		(cur_row, _) = self.output_view.rowcol(self.output_view.size())
+		self.output_view.show(self.output_view.text_point(cur_row, 0))
+
 		self.output_view.set_read_only(False)
 		self.output_view.settings().set("syntax", "Packages/SBTRunner/TestConsole.tmLanguage")
-		#self.output_view.settings().set("color_scheme", "Packages/SublimeSBTRunner/TestConsole.hidden-tmTheme")
+		self.output_view.settings().set("color_scheme", "Packages/SBTRunner/TestConsole.hidden-tmTheme")
 		data = re.sub(r'\033\[\d*(;\d*)?\w', '', data)
+		data = re.sub(r'.\x08', '', data)
+
 		
 		edit = self.output_view.begin_edit()
 		self.output_view.insert(edit, self.output_view.size(), data)
