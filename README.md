@@ -14,26 +14,21 @@ Supported SBT commands are:
   - sbt update
   - sbt compile
 
+Detects Play projects and will run play instead of SBT if found.
+Finds separate projects if multiple application folders are within a single project.
 
 Installation
 ------------
 
-Go to your Sublime Text 2 `Packages` directory
-
- - OS X: `~/Library/Application\ Support/Sublime\ Text\ 2/Packages`
- - Windows: `%APPDATA%/Sublime Text 2/Packages/`
- - Linux: `~/.Sublime\ Text\ 2/Packages/`
-
-and clone the repository using the command below:
-
-``` shell
-git clone 
-```
+Installing
+----------
+Download [Package Control](http://wbond.net/sublime_packages/package_control)
+and use the *Package Control: Install Package* command from the command palette. Search and select SBTRunner.
 
 Settings
 --------
 
-Modify the `SBTRunner.sublime-settings` file to `~/Library/Application Support/Sublime Text 2/Packages/User/` and make your changes there.
+Modify the package user settings to include the path of SBT and PLAY.
 
 
 Usage
