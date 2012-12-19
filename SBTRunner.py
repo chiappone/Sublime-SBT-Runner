@@ -52,13 +52,13 @@ class CommandRunner():
 			else:
 				sbt_command = "\"run-main "+ self.package_name +"\""
 		elif sbt_command == "test-only":
-			sbt_command = sbt_command +" "+ self.package_name
+			sbt_command = "\"" + sbt_command +" "+ self.package_name + "\""
 
 		if self.test_if_playapp():
 			self.package_name = self.current_file.replace(self.play_base_dir+ "/test/", "").replace("/", ".").replace(".scala", "")
 			self.project_dir = self.play_base_dir
 			self.SBT = self.PLAY
-			sbt_command = "test-only" + " " + self.package_name
+			sbt_command = "\"test-only" + " " + self.package_name + "\""
 
 
 		self.show_tests_panel()
