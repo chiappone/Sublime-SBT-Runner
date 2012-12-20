@@ -1,3 +1,5 @@
+[![endorse](http://api.coderwall.com/chiappone/endorsecount.png)](http://coderwall.com/chiappone)
+
 Sublime SBT Runner and Tester
 =======================
 
