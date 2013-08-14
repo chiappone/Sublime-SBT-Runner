@@ -1,26 +1,79 @@
-import sublime, sublime_plugin, subprocess, thread, os, functools, glob, fnmatch, re
+import os
+import re
+import sublime
+import string
+import sublime_plugin
+import subprocess
+import functools
+import glob
+import fnmatch
+import _thread
+import threading
+
 
 class SbtTestCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		CommandRunner().run_command("test-only", self)
+		CommandRunner().run_command(edit, "test-only", self)
 
 class SbtRunCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		CommandRunner().run_command("run-main", self)
+		CommandRunner().run_command(edit, "run-main", self)
 
 class SbtCompile(sublime_plugin.TextCommand):
 	def run(self, edit):
-		CommandRunner().run_command("compile", self)
+		CommandRunner().run_command(edit, "compile", self)
 
 class SbtClean(sublime_plugin.TextCommand):
 	def run(self, edit):
-		CommandRunner().run_command("clean", self)
+		CommandRunner().run_command(edit, "clean", self)
 
 class SbtUpdate(sublime_plugin.TextCommand):
 	def run(self, edit):
-		CommandRunner().run_command("update", self)
+		CommandRunner().run_command(edit, "update", self)
+
+class Runner(threading.Thread):
+	def __init__(self, command, shell, env, view):
+		self.stdout = None
+		self.stderr = None
+		self.command = command or ''
+		self.shell = shell or ''
+		self.env = env or ''
+		self.view = view or None
+		threading.Thread.__init__(self)
+
+	def run(self):
+		proc = subprocess.Popen(
+			[self.shell, '-ic', self.command],
+			shell=False,
+			stdout=subprocess.PIPE, 
+			stderr=subprocess.PIPE,
+			universal_newlines=True,
+			env=self.env
+			)
+
+		while True:
+			out = proc.stdout.readline()
+			if out == '' and proc.poll() != None:
+				break
+			if out != '':
+				self.view.run_command('sbt_view', { 'string': out })
+
+
+class SbtViewCommand(sublime_plugin.TextCommand):
+    def run(self, edit, string=''):
+    	data = re.sub(r'\033\[\d*(;\d*)?\w', '', string)
+    	data = re.sub(r'.\x08', '', data)
+    	(cur_row, _) = self.view.rowcol(self.view.size())
+    	self.view.show(self.view.text_point(cur_row, 0))
+    	self.view.set_read_only(False)
+    	self.view.settings().set("syntax", "Packages/SBTRunner/TestConsole.tmLanguage")
+    	self.view.settings().set("color_scheme", "Packages/SBTRunner/TestConsole.hidden-tmTheme")
+    	self.view.insert(edit, self.view.size(), data)
+    	self.view.set_read_only(True)
+
 
 class CommandRunner():
+
 	def load_config(self):
 		s = sublime.load_settings("SBT.sublime-settings")
 		#print(s.has("sbt_path"))
@@ -30,21 +83,23 @@ class CommandRunner():
 
 	def test_if_playapp(self):
 		self.play_base_dir = self.current_file.partition("/test/")[0]
-		print("Checking if: "+ self.play_base_dir + "/conf/routes")
+		#print("Checking if: "+ self.play_base_dir + "/conf/routes")
 		if os.path.exists(self.play_base_dir + "/conf/routes"):
 			return True
 		else:
 			return False
 
-	def run_command(self, sbt_command, commander):
-		#print(sbt_command)
+	def run_command(self, edit, sbt_command, commander):
+		#print((sbt_command))
+		self.edit = edit
 		self.view = commander.view
 		self.load_config()
 		self.current_file = self.view.file_name()
-		#print(self.current_file)
+		#print((self.current_file))
 		self.base_dir = self.current_file.partition("/test/scala/")[0]
 		self.project_dir = self.base_dir.replace("/src", "")
 		self.package_name = self.current_file.replace(self.base_dir + "/test/scala/", "").replace("/", ".").replace(".scala", "")
+		#print((self.package_name))
 
 		if sbt_command == "run-main":
 			if "/test/scala" in self.current_file: 
@@ -63,44 +118,12 @@ class CommandRunner():
 
 		self.show_tests_panel()
 		command = wrap_in_cd(self.project_dir, self.SBT + " " + sbt_command)
-		self.proc = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		thread.start_new_thread(self.read_stdout, ())
-		thread.start_new_thread(self.read_stderr, ())
 
-	def read_stdout(self):
-		self.copy_stream_to_output_view(self.proc.stdout)
-
-	def read_stderr(self):
-		self.copy_stream_to_output_view(self.proc.stderr)
-
-	def copy_stream_to_output_view(self, stream):
-		while True:
-			data = os.read(stream.fileno(), 2**15)
-
-			if data != "":
-				sublime.set_timeout(functools.partial(self.append_data, self.proc, data), 0)
-			else:
-				stream.close()
-				break		
+		runner = Runner(command, os.environ['SHELL'], os.environ.copy(), self.output_view)
+		runner.start()
 
 	def window(self):
 		return self.view.window()
-
-	def append_data(self, proc, data):
-		(cur_row, _) = self.output_view.rowcol(self.output_view.size())
-		self.output_view.show(self.output_view.text_point(cur_row, 0))
-
-		self.output_view.set_read_only(False)
-		self.output_view.settings().set("syntax", "Packages/SBTRunner/TestConsole.tmLanguage")
-		self.output_view.settings().set("color_scheme", "Packages/SBTRunner/TestConsole.hidden-tmTheme")
-		data = re.sub(r'\033\[\d*(;\d*)?\w', '', data)
-		data = re.sub(r'.\x08', '', data)
-
-		
-		edit = self.output_view.begin_edit()
-		self.output_view.insert(edit, self.output_view.size(), data)
-		self.output_view.end_edit(edit)
-		self.output_view.set_read_only(True)
 
 	def show_tests_panel(self):
 		if not hasattr(self, 'output_view'):
@@ -110,9 +133,9 @@ class CommandRunner():
 
 	def clear_test_view(self):
 		self.output_view.set_read_only(False)
-		edit = self.output_view.begin_edit()
-		self.output_view.erase(edit, sublime.Region(0, self.output_view.size()))
-		self.output_view.end_edit(edit)
+		#edit = self.output_view.begin_edit()
+		self.output_view.erase(self.edit, sublime.Region(0, self.output_view.size()))
+		#self.output_view.end_edit(edit)
 		self.output_view.set_read_only(True)
 
 def wrap_in_cd(path, command):
