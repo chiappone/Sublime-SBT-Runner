@@ -7,7 +7,6 @@ import subprocess
 import functools
 import glob
 import fnmatch
-import _thread
 import threading
 
 
